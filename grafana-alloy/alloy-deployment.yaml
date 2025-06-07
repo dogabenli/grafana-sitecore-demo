@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: grafana-alloy
+  labels:
+    app: grafana-alloy
+spec:
+  selector:
+    matchLabels:
+      app: grafana-alloy
+  template:
+    metadata:
+      labels:
+        app: grafana-alloy
+    spec:
+      nodeSelector:
+        "kubernetes.io/os": linux
+      containers:
+        - name: grafana-alloy
+          image: grafana/alloy:v1.8.3
+          args:
+              - run
+              - /etc/alloy/config.alloy
+          volumeMounts:
+            - name: alloy-config
+              mountPath: /etc/alloy
+            - name: logs-volume
+              mountPath: /logs/cm
+              subPath: cm
+            - name: logs-volume
+              mountPath: /logs/cd
+              subPath: cd
+      volumes:
+        - name: alloy-config
+          configMap:
+            name: grafana-alloy-config
+        - name: logs-volume
+          persistentVolumeClaim:
+            claimName: logs

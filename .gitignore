@@ -1,0 +1,22 @@
+# Local files not to be pushed
+Commands.md
+remove-finalizer.json
+sitecore-loki-queries.md
+windows-prometheus-queries.md
+
+# Common files to ignore
+*.log
+.env
+.env.*
+secrets/
+**/secrets/
+*.secret
+*.key
+
+# IDE and OS specific files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db 

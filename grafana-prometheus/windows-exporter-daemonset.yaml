@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: windows-exporter
+  namespace: default
+  labels:
+    app: windows-exporter
+spec:
+  selector:
+    matchLabels:
+      app: windows-exporter
+  template:
+    metadata:
+      labels:
+        app: windows-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9182"
+    spec:
+      nodeSelector:
+        kubernetes.io/os: windows
+      tolerations:
+        - key: "os"
+          operator: "Equal"
+          value: "Windows"
+          effect: "NoSchedule"
+      containers:
+        - name: windows-exporter
+          image: dbeacr.azurecr.io/windows-exporter:v0.30.6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9182
+              name: metrics

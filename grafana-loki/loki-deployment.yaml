@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: loki-dev
+spec:
+  serviceName: loki
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+    spec:
+      nodeSelector:
+        "kubernetes.io/os": linux
+      initContainers:
+        - name: fix-perms
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /var/loki/index /var/loki/cache /var/loki/chunks /var/loki/compactor /var/loki/wal
+              chown -R 10001:10001 /var/loki
+          volumeMounts:
+            - name: data
+              mountPath: /var/loki
+      containers:
+        - name: loki
+          image: grafana/loki:2.9.1
+          args:
+            - -config.file=/etc/loki/loki-config.yaml
+          ports:
+            - containerPort: 3100
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki
+            - name: data
+              mountPath: /var/loki
+          securityContext:
+            runAsUser: 10001
+      volumes:
+        - name: config
+          configMap:
+            name: loki-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alloy-config
+  labels:
+    app: grafana-alloy
+data:
+  config.alloy: |
+    logging {
+      level = "info"
+    }
+
+    local.file_match "cm_logs" {
+      path_targets = [
+        { __path__ = "/logs/cm/*.txt" },
+      ]
+    }
+
+    local.file_match "cd_logs" {
+      path_targets = [
+        { __path__ = "/logs/cd/*.txt" },
+      ]
+    }
+
+    loki.source.file "cm" {
+      targets    = local.file_match.cm_logs.targets
+      forward_to = [loki.process.cm.receiver]
+    }
+
+    loki.source.file "cd" {
+      targets    = local.file_match.cd_logs.targets
+      forward_to = [loki.process.cd.receiver]
+    }
+
+    loki.process "cm" {
+      forward_to = [loki.write.local_cm.receiver]
+      stage.multiline {
+        firstline = "^.+\\s+\\d{2}:\\d{2}:\\d{2}\\s+(INFO|DEBUG|WARN|ERROR|FATAL)"
+        max_wait_time = "3s"
+      }
+      stage.regex {
+        expression = "^(?P<thread>[^\\s]+)\\s+(?P<time>\\d{2}:\\d{2}:\\d{2})\\s+(?P<level>INFO|DEBUG|WARN|ERROR|FATAL)\\s+(?P<message>.*)"
+      }
+      stage.regex {
+        source     = "filename"
+        expression = "(?:.+\\.)?log\\.(?P<logdate>\\d{8})\\.\\d+\\.txt$"
+      }
+      stage.template {
+        source   = "timestamp"
+        template = "{{ .logdate }} {{ .time }}"
+      }
+      stage.timestamp {
+        source = "timestamp"
+        format = "20060102 15:04:05"
+      }
+      stage.labels {
+        values = {
+          level = "level",
+        }
+      }
+    }
+
+    loki.process "cd" {
+      forward_to = [loki.write.local_cd.receiver]
+      stage.multiline {
+        firstline = "^.+\\s+\\d{2}:\\d{2}:\\d{2}\\s+(INFO|DEBUG|WARN|ERROR|FATAL)"
+        max_wait_time = "3s"
+      }
+      stage.regex {
+        expression = "^(?P<thread>[^\\s]+)\\s+(?P<time>\\d{2}:\\d{2}:\\d{2})\\s+(?P<level>INFO|DEBUG|WARN|ERROR|FATAL)\\s+(?P<message>.*)"
+      }
+      stage.regex {
+        source     = "filename"
+        expression = "(?:.+\\.)?log\\.(?P<logdate>\\d{8})\\.\\d+\\.txt$"
+      }
+      stage.template {
+        source   = "timestamp"
+        template = "{{ .logdate }} {{ .time }}"
+      }
+      stage.timestamp {
+        source = "timestamp"
+        format = "20060102 15:04:05"
+      }
+      stage.labels {
+        values = {
+          level = "level",
+        }
+      }
+    }
+
+    loki.write "local_cm" {
+      endpoint {
+        url = "http://loki.default.svc.cluster.local:3100/loki/api/v1/push"
+      }
+      external_labels = {
+        job  = "sitecore",
+        role = "cm",
+      }
+    }
+
+    loki.write "local_cd" {
+      endpoint {
+        url = "http://loki.default.svc.cluster.local:3100/loki/api/v1/push"
+      }
+      external_labels = {
+        job  = "sitecore",
+        role = "cd",
+      }
+    }

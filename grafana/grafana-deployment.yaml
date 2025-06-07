@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  labels:
+    app: grafana
+    environment: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.3.1
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: config
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: storage
+              mountPath: /var/lib/grafana
+      securityContext:
+        runAsUser: 65534       # Use "nobody" user
+        runAsGroup: 65534
+        fsGroup: 65534         # <- This is what fixes volume permissions
+      volumes:
+        - name: config
+          configMap:
+            name: grafana-datasource
+        - name: storage
+          persistentVolumeClaim:
+              claimName: grafana-storage-dev
